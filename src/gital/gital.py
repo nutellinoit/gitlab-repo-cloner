@@ -25,7 +25,7 @@ LINE = "======================================="
 
 
 
-API_TIMEOUT = 10
+API_TIMEOUT = 30
 
 def _getCurrentFolder():
     """Returns list of the folders of the current working directory"""
