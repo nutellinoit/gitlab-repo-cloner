@@ -7,6 +7,7 @@ import os
 import requests
 import git
 import argparse
+import getpass
 from colorama import init as color_init, Fore, Style
 from . import __version__
 from .config import URL, POSTFIX, PRIVATE_TOKEN
@@ -21,6 +22,8 @@ YELLOW = Fore.YELLOW + BOLD
 RESET = Style.RESET_ALL
 ERROR = RED + "Error: " + RESET
 LINE = "======================================="
+
+
 
 API_TIMEOUT = 10
 
@@ -151,7 +154,34 @@ def _updateExistingRepo(path):
         return True
 
 
-def _cloneRepos(group, projects, currentFolder, update):
+def _cloneRepos(projects, password, currentFolder, update):
+    """Clone if the repository is not exists"""
+
+    print(LINE)
+    print('')
+
+    for project in projects:
+
+        repoPath = os.path.join(currentFolder, project['path_with_namespace'])
+
+        print(BLUE + "Path: " + repoPath)
+        if not os.path.exists(repoPath):
+            print(GREEN + project['name'] + RESET + ' is cloning.')
+            repo = git.Repo.clone_from(project['http_url_to_repo'].replace('https://', 'https://'+os.environ['USERNAME']+':'+password+'@'), repoPath)
+            print(GREEN + project['name'] + RESET + ' clone process is completed.')
+        else:
+            if not update:
+                print(BLUE + project['name'] + RESET + ' is already exists. Skipping this repository.')
+            else:
+                print(BLUE + project['name'] + RESET + ' is already exists.' + GREEN + ' Updating the repo.')
+                _updateExistingRepo(repoPath)
+
+        print(LINE+LINE)
+        print(" ")
+
+
+
+def _cloneGroupRepos(group, projects, password, currentFolder, update):
     """Clone if the repository is not exists"""
 
     groupDirectory = os.path.join(currentFolder, group)
@@ -166,12 +196,12 @@ def _cloneRepos(group, projects, currentFolder, update):
 
     for project in projects:
 
-        repoPath = os.path.join(currentFolder, group, project['path'])
+        repoPath = os.path.join(currentFolder, group, project['full_path'])
 
         print(BLUE + "Path: " + repoPath)
         if not os.path.exists(repoPath):
             print(GREEN + project['name'] + RESET + ' is cloning.')
-            repo = git.Repo.clone_from(project['http_url_to_repo'], repoPath, branch='master')
+            repo = git.Repo.clone_from(project['http_url_to_repo'].replace('https://', 'https://'+os.environ['USERNAME']+':'+password+'@'), repoPath)
             print(GREEN + project['name'] + RESET + ' clone process is completed.')
         else:
             if not update:
@@ -185,12 +215,15 @@ def _cloneRepos(group, projects, currentFolder, update):
 
 
 
+
+
 def _getProjectsOfGroup(group=None):
     """Get the list of projects in the given group"""
 
     if not group:
         print(ERROR + 'You need to specify a group name')
         return False
+
 
     # /groups/:id
     url = URL + POSTFIX + 'groups/' + group
@@ -202,9 +235,12 @@ def _getProjectsOfGroup(group=None):
         print(BOLD + 'Request URL: ' + url)
         result = requests.get(url, headers=HEADERS, timeout=API_TIMEOUT)
 
+
+        print('DEBUG ' + result.content)
+
         if result.status_code == 200:
 
-            projectList = result.json()['projects']
+            projectList = result.json()
 
             if len(projectList) > 0:
                 print(GREEN + str(len(projectList)) + ' projects found.')
@@ -223,13 +259,53 @@ def _getProjectsOfGroup(group=None):
         print(ERROR + 'Couldn\'t connect to GitLab API.')
         return False
     except:
-        print(ERROR + 'GitLab API call failed.')
+        #print(ERROR + 'GitLab API call failed.' + result.content)
+        return False
+
+def _getAllProjects():
+    """Get the list of projects in the given group"""
+
+    # /groups/:id
+    url = URL + POSTFIX + 'projects'
+
+    try:
+        HEADERS = {'PRIVATE-TOKEN': PRIVATE_TOKEN}
+        print(BOLD + 'Request URL: ' + url)
+        result = requests.get(url, headers=HEADERS, timeout=API_TIMEOUT)
+
+
+        print('DEBUG ' + result.content)
+
+        if result.status_code == 200:
+
+            projectList = result.json()
+
+            if len(projectList) > 0:
+                print(GREEN + str(len(projectList)) + ' projects found.')
+            else:
+                print(ERROR + ' no projects found.')
+                return False
+
+            return projectList
+        else:
+            print(ERROR + ' project list API returned with the following code: %s ' % result.status_code)
+            return False
+    except rest_exceptions.Timeout:
+        print(ERROR + 'Couldn\'t send request to or receive response from GitLab API within ' + API_TIMEOUT + ' seconds.')
+        return False
+    except rest_exceptions.ConnectionError:
+        print(ERROR + 'Couldn\'t connect to GitLab API.')
+        return False
+    except:
+        #print(ERROR + 'GitLab API call failed.' + result.content)
         return False
 
 
 def main():
 
     color_init(autoreset=True)
+
+
 
     if not URL:
         print(ERROR + 'You need to specify gitlab url.')
@@ -243,6 +319,9 @@ def main():
         print(ERROR + 'You need to specify your gitlab user\'s PRIVATE_TOKEN in the config file.')
         exit(1)
 
+
+    password = getpass.getpass("Enter " + os.environ['USERNAME'] + " password: ")
+
     parser = argparse.ArgumentParser(
          description="Clone GitLab repositories at once.")
 
@@ -252,25 +331,33 @@ def main():
     args = parser.parse_args()
 
     if not args.group:
-        print (ERROR + 'Please provide group key.')
-        exit(1)
+        print ('Cloning all projects.')
+        projects = _getAllProjects()
+
+        if not projects:
+            exit(1)
+
+        currentFolder = _getCurrentFolder()
+        print('')
+
+        _cloneRepos(projects, password, currentFolder, update=args.update)
+
     else:
         print(LINE)
         print(BOLD + ' Group name is: ' + GREEN + args.group)
         print(BOLD + ' Update: ' + 'True' if args.update is True else 'False')
         print(LINE)
         print('')
+        projects = _getProjectsOfGroup(args.group)
 
+        if not projects:
+            exit(1)
 
-    projects = _getProjectsOfGroup(args.group)
+        currentFolder = _getCurrentFolder()
+        print('')
 
-    if not projects:
-        exit(1)
+        _cloneGroupRepos(args.group, projects, password, currentFolder, update=args.update)
 
-    currentFolder = _getCurrentFolder()
-    print('')
-
-    _cloneRepos(args.group, projects, currentFolder, update=args.update)
 
 
 def run():
