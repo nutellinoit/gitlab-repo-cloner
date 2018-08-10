@@ -11,7 +11,7 @@ if sys.hexversion < 0x02070000:
 
 from gital import __version__
 
-with open('README.md') as fp:
+with open('README_to_fix.md') as fp:
     long_desc = fp.read()
 
 setup(

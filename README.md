@@ -1,4 +1,4 @@
-# Gitlab repo clone
+# Gitlab repo cloner
 
 ## Usage with docker
 
