@@ -7,7 +7,7 @@ node {
     }
 
     stage('Build image') {
-        app = docker.build("nutellinoit/gitlab-repo-cloner")
+        app = docker.build("nutellinoit/gitlab-repo-cloner","--pull .")
     }
 
     stage('Push image') {
