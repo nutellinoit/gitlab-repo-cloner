@@ -3,3 +3,4 @@ build/
 dist/
 gital.egg-info/
 *.pyc
+/README_INT.md

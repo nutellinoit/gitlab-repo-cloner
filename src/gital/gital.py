@@ -171,7 +171,7 @@ def _cloneRepos(group, projects, currentFolder, update):
         print(BLUE + "Path: " + repoPath)
         if not os.path.exists(repoPath):
             print(GREEN + project['name'] + RESET + ' is cloning.')
-            repo = git.Repo.clone_from(project['ssh_url_to_repo'], repoPath, branch='master')
+            repo = git.Repo.clone_from(project['http_url_to_repo'], repoPath, branch='master')
             print(GREEN + project['name'] + RESET + ' clone process is completed.')
         else:
             if not update:
