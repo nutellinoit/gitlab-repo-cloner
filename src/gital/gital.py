@@ -262,11 +262,11 @@ def _getProjectsOfGroup(group=None):
         #print(ERROR + 'GitLab API call failed.' + result.content)
         return False
 
-def _getAllProjects():
+def _getAllProjects(page):
     """Get the list of projects in the given group"""
 
     # /groups/:id
-    url = URL + POSTFIX + 'projects'
+    url = URL + POSTFIX + 'projects?per_page=100&page='+str(page)
 
     try:
         HEADERS = {'PRIVATE-TOKEN': PRIVATE_TOKEN}
@@ -277,7 +277,7 @@ def _getAllProjects():
         #print('DEBUG ' + result.content)
 
         if result.status_code == 200:
-
+            print(result.headers['X-Total-Pages'])
             projectList = result.json()
 
             if len(projectList) > 0:
@@ -287,6 +287,34 @@ def _getAllProjects():
                 return False
 
             return projectList
+        else:
+            print(ERROR + ' project list API returned with the following code: %s ' % result.status_code)
+            return False
+    except rest_exceptions.Timeout:
+        print(ERROR + 'Couldn\'t send request to or receive response from GitLab API within ' + API_TIMEOUT + ' seconds.')
+        return False
+    except rest_exceptions.ConnectionError:
+        print(ERROR + 'Couldn\'t connect to GitLab API.')
+        return False
+    except:
+        #print(ERROR + 'GitLab API call failed.' + result.content)
+        return False
+
+def _getAllProjectsPages():
+    """Get the list of projects in the given group"""
+
+    # /groups/:id
+    url = URL + POSTFIX + 'projects?per_page=100'
+    try:
+        HEADERS = {'PRIVATE-TOKEN': PRIVATE_TOKEN}
+        print(BOLD + 'Request URL: ' + url)
+        result = requests.get(url, headers=HEADERS, timeout=API_TIMEOUT)
+
+        #print('DEBUG ' + result.content)
+
+        if result.status_code == 200:
+            return result.headers['X-Total-Pages']
+
         else:
             print(ERROR + ' project list API returned with the following code: %s ' % result.status_code)
             return False
@@ -332,15 +360,21 @@ def main():
 
     if not args.group:
         print ('Cloning all projects.')
-        projects = _getAllProjects()
 
-        if not projects:
-            exit(1)
 
-        currentFolder = _getCurrentFolder()
-        print('')
+        pages=_getAllProjectsPages();
 
-        _cloneRepos(projects, password, currentFolder, update=args.update)
+        for x in range(0, int(pages)):
+
+            projects = _getAllProjects(x+1)
+
+            if not projects:
+                exit(1)
+
+            currentFolder = _getCurrentFolder()
+            print('')
+
+            _cloneRepos(projects, password, currentFolder, update=args.update)
 
     else:
         print(LINE)
