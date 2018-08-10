@@ -319,7 +319,7 @@ def _getAllProjectsPages():
             print(ERROR + ' project list API returned with the following code: %s ' % result.status_code)
             return False
     except rest_exceptions.Timeout:
-        print(ERROR + 'Couldn\'t send request to or receive response from GitLab API within ' + API_TIMEOUT + ' seconds.')
+        print(ERROR + 'Couldn\'t send request to or receive response from GitLab API within ' + str(API_TIMEOUT) + ' seconds.')
         return False
     except rest_exceptions.ConnectionError:
         print(ERROR + 'Couldn\'t connect to GitLab API.')
