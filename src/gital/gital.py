@@ -236,7 +236,7 @@ def _getProjectsOfGroup(group=None):
         result = requests.get(url, headers=HEADERS, timeout=API_TIMEOUT)
 
 
-        print('DEBUG ' + result.content)
+        #print('DEBUG ' + result.content)
 
         if result.status_code == 200:
 
@@ -274,7 +274,7 @@ def _getAllProjects():
         result = requests.get(url, headers=HEADERS, timeout=API_TIMEOUT)
 
 
-        print('DEBUG ' + result.content)
+        #print('DEBUG ' + result.content)
 
         if result.status_code == 200:
 
